@@ -1,42 +1,35 @@
+"use strict";
 // Asynchronous Code in JavaScript
 
 const NUMBERS_API_URL = "http://numbersapi.com";
 
-async function showNumberTrivia() {
-  const favNum = 7;
+/**Gets number trivia from Number API */
+async function showNumberTrivia(favNum) {
   const response = await fetch(`${NUMBERS_API_URL}/${favNum}?json`);
 
   const data = await response.json();
 
+  console.log("showNumberTrivia", data.text);
+}
+
+/**Gets first response from Numbers API */
+async function showNumberRace(nums) {
+  const triviaPromises = nums.map(function (num) {
+    return fetch(`${NUMBERS_API_URL}/${num}?json`);
+  });
+
+  const firstResponse = await Promise.race(triviaPromises);
+
+  const data = await firstResponse.json();
+
   console.log(data.text);
 }
 
-async function showNumberRace() {
-  const triviaPromises = [];
-
-  for (let i = 0; i < 4; i++) {
-    triviaPromises.push(fetch(`${NUMBERS_API_URL}/${i}?json`));
-  }
-
-  const response = await Promise.race(triviaPromises);
-
-  const data = await response.json();
-
-  console.log(data.text);
-}
-
-async function showNumberAll() {
-  const triviaPromises = [];
-
-  for (let i = 0; i < 4; i++) {
-    let number = i;
-
-    if (i === 0) {
-      number = "WRONG";
-    }
-
-    triviaPromises.push(fetch(`${NUMBERS_API_URL}/${number}?json`));
-  }
+/**Get all number trivia and errors */
+async function showNumberAll(nums) {
+  const triviaPromises = nums.map(function (num) {
+    return fetch(`${NUMBERS_API_URL}/${num}?json`);
+  });
 
   const settledResults = await Promise.allSettled(triviaPromises);
 
@@ -44,22 +37,34 @@ async function showNumberAll() {
   const errorMessages = [];
 
   for (const result of settledResults) {
-    const {status, statusText} = result.value;
+    if (result.status === 'fulfilled') {
+      const { ok, statusText } = result.value;
 
-    if (status === 200) {
-      const data = await result.value.json();
-      triviaResponses.push(data.text);
+      if (ok) {
+        const data = await result.value.json();
+        triviaResponses.push(data.text);
 
-    } else if (status === 404) {
-      errorMessages.push(statusText)
+      } else {
+        errorMessages.push(statusText);
+      }
+    } else {
+      errorMessages.push(result.reason);
     }
-
   }
 
-  console.log(triviaResponses);
-  console.log(errorMessages);
+  console.log("showNumberAll Trivia", triviaResponses);
+  console.log("showNumberAll Errors", errorMessages);
+}
+
+/**Runs functions in order */
+async function main() {
+  await showNumberTrivia(7);
+  await showNumberRace([1, 2, 3, 4]);
+  await showNumberAll([1, 2, 3, "WRONG"]);
+
 }
 
 // showNumberTrivia();
 // showNumberRace();
-showNumberAll();
+// showNumberAll();
+await main();
